@@ -1,5 +1,38 @@
 require 'rails_helper'
 
+# Shared examples for common error handling tests
+shared_examples "API error handling" do |endpoint|
+  let(:url) { "/#{endpoint}" }
+
+  it "returns 400 for empty body" do
+    post url, params: "", headers: { 'CONTENT_TYPE' => 'application/json' }
+    expect(response).to have_http_status(:bad_request)
+    json = JSON.parse(response.body)
+    expect(json['error']).to eq('No payload provided')
+  end
+
+  it "returns 400 for invalid JSON" do
+    post url, params: '{invalid_json:', headers: { 'CONTENT_TYPE' => 'application/json' }
+    expect(response).to have_http_status(:bad_request)
+    json = JSON.parse(response.body)
+    expect(json['error']).to eq('Invalid JSON')
+  end
+
+  it "returns 400 for non-object payload (array)" do
+    post url, params: [ 1, 2, 3 ].to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+    expect(response).to have_http_status(:bad_request)
+    json = JSON.parse(response.body)
+    expect(json['error']).to eq('Expected object, got Array')
+  end
+
+  it "returns 400 for non-object payload (string)" do
+    post url, params: '"just a string"'.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+    expect(response).to have_http_status(:bad_request)
+    json = JSON.parse(response.body)
+    expect(json['error']).to eq('Expected object, got String')
+  end
+end
+
 describe 'POST /encrypt', type: :request do
   let(:url) { '/encrypt' }
 
@@ -26,6 +59,9 @@ describe 'POST /encrypt', type: :request do
     json = JSON.parse(response.body)
     expect(json['error']).to eq('Invalid JSON')
   end
+
+  # Include shared error handling tests
+  include_examples "API error handling", "encrypt"
 end
 
 describe 'POST /decrypt', type: :request do
@@ -97,6 +133,9 @@ describe 'POST /decrypt', type: :request do
     json = JSON.parse(response.body)
     expect(json['error']).to eq('Invalid JSON')
   end
+
+  # Include shared error handling tests
+  include_examples "API error handling", "decrypt"
 end
 
 describe 'POST /sign', type: :request do
@@ -144,6 +183,9 @@ describe 'POST /sign', type: :request do
     json = JSON.parse(response.body)
     expect(json['error']).to eq('Invalid JSON')
   end
+
+  # Include shared error handling tests
+  include_examples "API error handling", "sign"
 end
 
 describe 'POST /verify', type: :request do
@@ -232,4 +274,7 @@ describe 'POST /verify', type: :request do
     json = JSON.parse(response.body)
     expect(json['error']).to eq('Invalid JSON')
   end
+
+  # Include shared error handling tests
+  include_examples "API error handling", "verify"
 end
