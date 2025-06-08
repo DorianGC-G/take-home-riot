@@ -98,3 +98,138 @@ describe 'POST /decrypt', type: :request do
     expect(json['error']).to eq('Invalid JSON')
   end
 end
+
+describe 'POST /sign', type: :request do
+  let(:url) { '/sign' }
+  let(:signer) { Signature::HmacSignature.new }
+
+  it 'returns a signature for the payload' do
+    payload = {
+      "message": "Hello World",
+      "timestamp": 1616161616
+    }
+
+    post url, params: payload.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+    expect(response).to have_http_status(:ok)
+    json = JSON.parse(response.body)
+
+    expect(json).to have_key('signature')
+    expect(json['signature']).not_to be_empty
+    expect(json['signature']).to eq(signer.sign(payload))
+  end
+
+  it 'generates the same signature regardless of key order' do
+    payload1 = {
+      "message": "Hello World",
+      "timestamp": 1616161616
+    }
+
+    payload2 = {
+      "timestamp": 1616161616,
+      "message": "Hello World"
+    }
+
+    post url, params: payload1.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+    signature1 = JSON.parse(response.body)['signature']
+
+    post url, params: payload2.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+    signature2 = JSON.parse(response.body)['signature']
+
+    expect(signature1).to eq(signature2)
+  end
+
+  it 'returns error for invalid JSON' do
+    post url, params: '{invalid_json:', headers: { 'CONTENT_TYPE' => 'application/json' }
+    expect(response).to have_http_status(:bad_request)
+    json = JSON.parse(response.body)
+    expect(json['error']).to eq('Invalid JSON')
+  end
+end
+
+describe 'POST /verify', type: :request do
+  let(:url) { '/verify' }
+  let(:signer) { Signature::HmacSignature.new }
+
+  it 'returns 204 for valid signature' do
+    data = {
+      "message": "Hello World",
+      "timestamp": 1616161616
+    }
+
+    signature = signer.sign(data)
+    payload = {
+      "signature": signature,
+      "data": data
+    }
+
+    post url, params: payload.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+    expect(response).to have_http_status(:no_content)
+  end
+
+  it 'returns 204 for valid signature with different key order' do
+    data1 = {
+      "message": "Hello World",
+      "timestamp": 1616161616
+    }
+
+    data2 = {
+      "timestamp": 1616161616,
+      "message": "Hello World"
+    }
+
+    signature = signer.sign(data1)
+    payload = {
+      "signature": signature,
+      "data": data2
+    }
+
+    post url, params: payload.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+    expect(response).to have_http_status(:no_content)
+  end
+
+  it 'returns 400 for invalid signature' do
+    data = {
+      "message": "Hello World",
+      "timestamp": 1616161616
+    }
+
+    tampered_data = {
+      "message": "Goodbye World",
+      "timestamp": 1616161616
+    }
+
+    signature = signer.sign(data)
+    payload = {
+      "signature": signature,
+      "data": tampered_data
+    }
+
+    post url, params: payload.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+    expect(response).to have_http_status(:bad_request)
+  end
+
+  it 'returns 400 for missing required fields' do
+    payload = {
+      "signature": "some_signature"
+      # missing data field
+    }
+
+    post url, params: payload.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+    expect(response).to have_http_status(:bad_request)
+
+    payload = {
+      "data": { "message": "Hello World" }
+      # missing signature field
+    }
+
+    post url, params: payload.to_json, headers: { 'CONTENT_TYPE' => 'application/json' }
+    expect(response).to have_http_status(:bad_request)
+  end
+
+  it 'returns error for invalid JSON' do
+    post url, params: '{invalid_json:', headers: { 'CONTENT_TYPE' => 'application/json' }
+    expect(response).to have_http_status(:bad_request)
+    json = JSON.parse(response.body)
+    expect(json['error']).to eq('Invalid JSON')
+  end
+end
