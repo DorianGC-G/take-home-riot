@@ -14,7 +14,7 @@ module Encryption
     end
 
     def decrypt(value)
-      raise ArgumentError, "Value is not a Base64 string." unless value.is_a?(String)
+      return value unless value.is_a?(String)
 
       begin
         decoded = Base64.strict_decode64(value)

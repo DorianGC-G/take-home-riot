@@ -54,8 +54,11 @@ describe Encryption::Base64Encryption do
       expect(encryption_service.decrypt('not_base64')).to eq('not_base64')
     end
 
-    it 'raises error if value is not a Base64 string' do
-      expect { encryption_service.decrypt(123) }.to raise_error(ArgumentError)
+    it 'returns non-string values as is' do
+      expect(encryption_service.decrypt(123)).to eq(123)
+      expect(encryption_service.decrypt(nil)).to eq(nil)
+      expect(encryption_service.decrypt({ key: 'value' })).to eq({ key: 'value' })
+      expect(encryption_service.decrypt([ 1, 2, 3 ])).to eq([ 1, 2, 3 ])
     end
   end
 end
