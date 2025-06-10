@@ -2,7 +2,7 @@
 
 A Ruby on Rails API application that provides cryptographic operations including encryption, decryption, signing, and verification of JSON payloads.
 
-This application was developed as part of a technical challenge for [Riot] (https://tryriot.com/fr/).
+This application was developed as part of a technical challenge for [Riot](https://tryriot.com/fr/).
 
 ## Features
 
